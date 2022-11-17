@@ -43,6 +43,12 @@ void Gemm_MRxNRKernel_Packed( int k,
 
                 ".align 4                      \n\t"
                 "M4x4_TAILLOOP:                \n\t"
+                
+                "addi       t4,    %[PA], 2*8  \n\t" // t4 = %[PA] + (2*8)  
+                "addi       t1,    %[PB], 1*8  \n\t" // t1 = %[PB] + (1*8)
+                "addi       t2,    %[PB], 2*8  \n\t" // t2 = %[PB] + (2*8)
+                "addi       t3,    %[PB], 3*8  \n\t" // t3 = %[PB] + (3*8)
+                                                     //
                 "fld        ft0,  (%[PB])      \n\t" // ft0 = (%[PB])            // ft0 = B[0, 0]
                 "addi       %[PB], %[PB], 4*8  \n\t" // %[PB] = %[PB] + (4*8)    // B[1, 0]
                 "vle64.v      v0,   (%[PA])    \n\t" // v0[0 : 2] = (%[PA])      // v0[0 : 2] = A[0 : 2, 0]
@@ -66,55 +72,55 @@ void Gemm_MRxNRKernel_Packed( int k,
                 "vfmacc.vv  v21,  v9,    v1    \n\t" // v21[i] = (v9[i] * v1[i]) + v21[i]    // B[0, 1] * A[2 : 4, 0] + v21[i]
                 "vfmv.v.f   v10,  ft2          \n\t" // v10[i] = ft2                         // v10[i] = B[0, 2]
 
-                "vfmv.v.f   v11,  ft3          \n\t"  // v11[i] = ft3                        // v11[i] = B[0, 3]
-                "vfmacc.vv  v24,  v10,    v0    \n\t" // v24[i] = (v10[i] * v0[i]) + v24[i]  // B[0, 2] * A[0 : 2, 0] + v24[i]
-                "vfmacc.vv  v25,  v10,    v1    \n\t" // v25[i] = (v10[i] * v1[i]) + v25[i]  // B[0, 2] * A[2 : 4, 0] + v25[i]
+                "vfmv.v.f   v11,  ft3          \n\t" // v11[i] = ft3                         // v11[i] = B[0, 3]
+                "vfmacc.vv  v24,  v10,    v0   \n\t" // v24[i] = (v10[i] * v0[i]) + v24[i]   // B[0, 2] * A[0 : 2, 0] + v24[i]
+                "vfmacc.vv  v25,  v10,    v1   \n\t" // v25[i] = (v10[i] * v1[i]) + v25[i]   // B[0, 2] * A[2 : 4, 0] + v25[i]
 
-                "vfmacc.vv  v28,  v11,    v0    \n\t" // v28[i] = (v11[i] * v0[i]) + v28[i]  // B[0, 3] * A[0 : 2, 0] + v28[i]
+                "vfmacc.vv  v28,  v11,    v0   \n\t" // v28[i] = (v11[i] * v0[i]) + v28[i]   // B[0, 3] * A[0 : 2, 0] + v28[i]
                 "vfmacc.vv  v29,  v11,    v1    \n\t" // v29[i] = (v11[i] * v1[i]) + v29[i]  // B[0, 3] * A[2 : 4, 0] + v29[i]
 
-                "addi       t0,   t0, -1       \n\t" // t0 = t0 + (-1)
+                "addi       t0,   t0, -1        \n\t" // t0 = t0 + (-1)
                 "bgtz       t0,   M4x4_TAILLOOP \n\t" // If t0 > 0 goto M4x4_MAINLOOP
 
                 // Save result
                 // load C
-                "M4x4_SAVERESULT:              \n\t"
+                "M4x4_SAVERESULT:               \n\t"
                 // use v8 to store alpha
-                "vfmv.v.f   v8,   %[ALPHA]     \n\t" // v8[i] = %[ALPHA]     
-                "vle64.v      v0,   (%[C0])      \n\t" // v0[0 : 2] = (%[C0])    // v0[0 : 2] = C[0 : 2, 0]
-                "addi       t4,   %[C0], 2*8   \n\t" // t4 = %[C0] + (2*8)     // t4 = (C[2, 0])
-                "vle64.v      v1,   (%[C1])      \n\t" // v1[0 : 2] = (%[C1])    // v1[0 : 2] = C[0 : 2, 1]
-                "addi       t5,   %[C1], 2*8   \n\t" // t5 = %[C1] + (2*8)     // t5 = (C[2, 1])
-                "vle64.v      v2,   (%[C2])      \n\t" // v2[0 : 2] = (%[C2])    // v2[0 : 2] = C[0 : 2, 2]
-                "addi       t6,   %[C2], 2*8   \n\t" // t6 = %[C2] + (2*8)     // t6 = (C[2, 2])
-                "vle64.v      v3,   (%[C3])      \n\t" // v3[0 : 2] = (%[C3])    // v1[0 : 2] = C[0 : 2, 3]
-                "addi       t3,   %[C3], 2*8   \n\t" // t3 = %[C3] + (2*8)     // t3 = (C[2, 3])
+                "vfmv.v.f   v8,   %[ALPHA]      \n\t" // v8[i] = %[ALPHA]     
+                "vle64.v      v0,   (%[C0])     \n\t" // v0[0 : 2] = (%[C0])    // v0[0 : 2] = C[0 : 2, 0]
+                "addi       t4,   %[C0], 2*8    \n\t" // t4 = %[C0] + (2*8)     // t4 = (C[2, 0])
+                "vle64.v      v1,   (%[C1])     \n\t" // v1[0 : 2] = (%[C1])    // v1[0 : 2] = C[0 : 2, 1]
+                "addi       t5,   %[C1], 2*8    \n\t" // t5 = %[C1] + (2*8)     // t5 = (C[2, 1])
+                "vle64.v      v2,   (%[C2])     \n\t" // v2[0 : 2] = (%[C2])    // v2[0 : 2] = C[0 : 2, 2]
+                "addi       t6,   %[C2], 2*8    \n\t" // t6 = %[C2] + (2*8)     // t6 = (C[2, 2])
+                "vle64.v      v3,   (%[C3])     \n\t" // v3[0 : 2] = (%[C3])    // v1[0 : 2] = C[0 : 2, 3]
+                "addi       t3,   %[C3], 2*8    \n\t" // t3 = %[C3] + (2*8)     // t3 = (C[2, 3])
 
                 // Multiply Alpha
-                "vfmacc.vv  v0,   v8, v16 \n\t"       // v0[i] = (v8[i] * v16[i]) + v0[i]  // C[0 : 2, 0] + (alpha * v16[0 : 2])
-                "vle64.v      v4,   (t4)          \n\t" // v4[0 : 2] = (t4)                  // v4[0 : 2] = (C[2 : 4, 0])
-                "vfmacc.vv  v1,   v8, v20 \n\t"       // v1[i] = (v8[i] * v20[i]) + v1[i]  // C[0 : 2, 1] + (alpha * v20[0 : 2])
-                "vle64.v      v5,   (t5)          \n\t" // v5[0 : 2] = (t5)                  // v5[0 : 2] = (C[2 : 4, 1])
-                "vfmacc.vv  v2,   v8, v24 \n\t"       // v2[i] = (v8[i] * v24[i]) + v2[i]  // C[0 : 2, 2] + (alpha * v24[0 : 2])
-                "vle64.v      v6,   (t6)          \n\t" // v6[0 : 2] = (t6)                  // v6[0 : 2] = (C[2 : 4, 2])
-                "vfmacc.vv  v3,   v8, v28 \n\t"       // v3[i] = (v8[i] * v28[i]) + v3[i]  // C[0 : 2, 3] + (alpha * v28[0 : 2])
-                "vle64.v      v7,   (t3)          \n\t" // v7[0 : 2] = (t3))                 // v7[0 : 2] = (C[2 : 4, 3])
-                "vfmacc.vv  v4,   v8, v17 \n\t"       // v4[i] = (v8[i] * v17[i]) + v4[i]  // C[2 : 4, 0] + (alpha * v17[0 : 2])
-                "vse64.v      v0,   (%[C0])      \n\t"  // store updated C[0 : 2, 0] at (%[C0])
-                "add        %[C0], %[C0], 4*8  \n\t"  // %[C0] += (4*8)                    // (C[4, 0])
-                "vfmacc.vv  v5,   v8, v21 \n\t"       // v5[i] = (v8[i] * v21[i]) + v5[i]  // C[2 : 4, 1] + (alpha * v17[0 : 2])
-                "vse64.v      v1,   (%[C1])      \n\t"  // store updated C[0 : 2, 1] at (%[C1])          
-                "add        %[C1], %[C1], 4*8  \n\t"  // %[C1] += (4*8)                    // (C[4, 1])
+                "vfmacc.vv  v0,   v8, v16       \n\t" // v0[i] = (v8[i] * v16[i]) + v0[i]  // C[0 : 2, 0] + (alpha * v16[0 : 2])
+                "vle64.v      v4,   (t4)        \n\t" // v4[0 : 2] = (t4)                  // v4[0 : 2] = (C[2 : 4, 0])
+                "vfmacc.vv  v1,   v8, v20       \n\t" // v1[i] = (v8[i] * v20[i]) + v1[i]  // C[0 : 2, 1] + (alpha * v20[0 : 2])
+                "vle64.v      v5,   (t5)        \n\t" // v5[0 : 2] = (t5)                  // v5[0 : 2] = (C[2 : 4, 1])
+                "vfmacc.vv  v2,   v8, v24       \n\t" // v2[i] = (v8[i] * v24[i]) + v2[i]  // C[0 : 2, 2] + (alpha * v24[0 : 2])
+                "vle64.v      v6,   (t6)        \n\t" // v6[0 : 2] = (t6)                  // v6[0 : 2] = (C[2 : 4, 2])
+                "vfmacc.vv  v3,   v8, v28       \n\t" // v3[i] = (v8[i] * v28[i]) + v3[i]  // C[0 : 2, 3] + (alpha * v28[0 : 2])
+                "vle64.v      v7,   (t3)        \n\t" // v7[0 : 2] = (t3))                 // v7[0 : 2] = (C[2 : 4, 3])
+                "vfmacc.vv  v4,   v8, v17       \n\t" // v4[i] = (v8[i] * v17[i]) + v4[i]  // C[2 : 4, 0] + (alpha * v17[0 : 2])
+                "vse64.v      v0,   (%[C0])     \n\t" // store updated C[0 : 2, 0] at (%[C0])
+                "add        %[C0], %[C0], 4*8   \n\t" // %[C0] += (4*8)                    // (C[4, 0])
+                "vfmacc.vv  v5,   v8, v21       \n\t" // v5[i] = (v8[i] * v21[i]) + v5[i]  // C[2 : 4, 1] + (alpha * v17[0 : 2])
+                "vse64.v      v1,   (%[C1])     \n\t" // store updated C[0 : 2, 1] at (%[C1])          
+                "add        %[C1], %[C1], 4*8   \n\t" // %[C1] += (4*8)                    // (C[4, 1])
 
-                "vfmacc.vv  v6,   v8, v25 \n\t"       // v6[i] = (v8[i] * v25[i]) + v6[i]  // C[2 : 4, 2] + (alpha * v17[0 : 2])
-                "vse64.v      v2,   (%[C2])      \n\t"  // store updated C[0 : 2, 1] at (%[C2])
-                "add        %[C2], %[C2], 4*8  \n\t"  // %[C2] += (4*8)                    // (C[4, 2])
+                "vfmacc.vv  v6,   v8, v25       \n\t" // v6[i] = (v8[i] * v25[i]) + v6[i]  // C[2 : 4, 2] + (alpha * v17[0 : 2])
+                "vse64.v      v2,   (%[C2])     \n\t" // store updated C[0 : 2, 1] at (%[C2])
+                "add        %[C2], %[C2], 4*8   \n\t" // %[C2] += (4*8)                    // (C[4, 2])
 
-                "vfmacc.vv  v7,   v8, v29 \n\t"       // v7[i] = (v8[i] * v29[i]) + v7[i]  // C[2 : 4, 3] + (alpha * v17[0 : 2])
-                "vse64.v      v3,   (%[C3])      \n\t"  // store updated C[0 : 2, 1] at (%[C2])
-                "add        %[C3], %[C3], 4*8  \n\t"  // %[C3] += (4*8)                    // (C[4, 3])
+                "vfmacc.vv  v7,   v8, v29       \n\t" // v7[i] = (v8[i] * v29[i]) + v7[i]  // C[2 : 4, 3] + (alpha * v17[0 : 2])
+                "vse64.v     v3,   (%[C3])      \n\t" // store updated C[0 : 2, 1] at (%[C2])
+                "add        %[C3], %[C3], 4*8   \n\t" // %[C3] += (4*8)                    // (C[4, 3])
 
-                "M4x4_END:                     \n\t"
+                "M4x4_END:                      \n\t"
 
                 : [C0] "+r"(C0), [C1] "+r"(C1), [C2] "+r"(C2), [C3] "+r"(C3),
                   [PA] "+r"(MP_A), [PB] "+r"(MP_B)
